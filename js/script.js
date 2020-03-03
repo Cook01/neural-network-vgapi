@@ -5,10 +5,10 @@ let tagList = [];
 listGenres("https://api.rawg.io/api/genres?page_size=40");
 listTags("https://api.rawg.io/api/tags?page_size=40");
 
-let inputCount = 14;
+let inputCount = 5;
 inputCount += genreList.length;
 inputCount += tagList.length;
-let brain = new NeuralNetwork([inputCount, 50, 25, 7, 1]);
+let brain = new NeuralNetwork([inputCount, 20, 10, 1]);
 
 
 function listGenres(url){
@@ -34,7 +34,7 @@ function listTags(url){
         let data = JSON.parse(this.response);
 
         data.results.forEach(tag => {
-            if(tag.games_count > 1000)
+            if(tag.games_count > 100)
                 tagList.push(tag.id);
         });
 
@@ -87,7 +87,7 @@ function findNewGame(URL, gameList){
         data.results.some(game => {
             let isNew = true;
             gameList.some(myGame => {
-                if(game.id === myGame.id){
+                if(game.id === myGame.id || game.tba){
                     isNew = false;
                     return true;
                 }
@@ -108,23 +108,28 @@ function findNewGame(URL, gameList){
                 document.getElementById("game_short_screenshots").innerHTML = shortScreenshotsHTML;
 
                 document.getElementById("game_rating").innerText = game.rating;
-                input.push(game.rating);
+                input.push(game.rating?game.rating:0);
 
+                /*let ratingsHTML = "";
                 game.ratings.forEach(rating =>{
-                    let elementID = "game_ratings_" + rating.title;
-                    document.getElementById(elementID).innerText = rating.count;
-                    input.push(rating.count);
+                    ratingsHTML += "<li>" + rating.title + " : " + rating.count + "</li>";
+                    input.push(rating.count?rating.count:0);
                 });
+                document.getElementById("game_ratings_details").innerHTML = ratingsHTML;*/
+
+                document.getElementById("game_rating_top").innerText = game.rating_top;
+                input.push(game.rating_top?game.rating_top:0);
+
                 document.getElementById("game_ratings_count").innerText = game.ratings_count;
-                input.push(game.ratings_count);
+                input.push(game.ratings_count?game.ratings_count:0);
 
                 document.getElementById("game_metacritic").innerText = game.metacritic;
-                input.push(game.metacritic ? game.metacritic : -1);
+                input.push(game.metacritic?game.metacritic:0);
 
                 document.getElementById("game_added").innerText = game.added;
-                input.push(game.added);
+                input.push(game.added?game.added:0);
 
-                document.getElementById("game_status_yet").innerText = game.added_by_status.yet;
+                /*document.getElementById("game_status_yet").innerText = game.added_by_status.yet;
                 input.push(game.added_by_status.yet);
 
                 document.getElementById("game_status_owned").innerText = game.added_by_status.owned;
@@ -140,7 +145,7 @@ function findNewGame(URL, gameList){
                 input.push(game.added_by_status.dropped);
 
                 document.getElementById("game_status_playing").innerText = game.added_by_status.playing;
-                input.push(game.added_by_status.playing);
+                input.push(game.added_by_status.playing);*/
                 
                 let inputGenre = [];
                 genreList.forEach(genre => {
@@ -203,7 +208,7 @@ function findNewGame(URL, gameList){
                 oldPassButton.parentNode.replaceChild(newPassButton, oldPassButton);
 
                 let guess = brain.feedforward(input);
-                let guessTxt
+                let guessTxt;
 
                 if(guess >= (2/3))
                     guessTxt = "Yes";
@@ -234,18 +239,24 @@ function saveGame(id, pass, fav, input){
     }
     myGamesList.push(gameToSave);
 
+    let trainingCount = 0;
 
+    if(myGamesList.length === 10)
+        trainingCount = 10000;
+    else if(myGamesList.length > 10)
+        trainingCount = 100;
 
-    if(myGamesList.length >= 10){    
-        for(let i = 0; i < Math.floor(10000/myGamesList.length); i++){
-            shuffle(myGamesList);
-    
-            myGamesList.forEach(game => {
-                if(!game.pass){
-                    let target = game.fav ? [1] : [0];
-                    brain.train(game.input, target);
-                }
-            })
-        }
+    let i = 0;
+    while(i < trainingCount){
+        shuffle(myGamesList);
+
+        myGamesList.forEach(game => {
+            if(!game.pass){
+                let target = game.fav ? [1] : [0];
+                brain.train(game.input, target);
+
+                i += 1;
+            }
+        });
     }
 }
